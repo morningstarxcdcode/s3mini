@@ -109,7 +109,7 @@ async function initializeGarage(containerName = 'garage') {
       console.log(`ℹ️  Layout already at v${current}, skipping apply`);
     }
     // 4. Create bucket
-    const bucketName = process.env.GARAGE_BUCKET_NAME || 'test-bucket';
+    const bucketName = 'test-bucket';
     await ensureBucketExists(containerName, configPath, bucketName);
     console.log(`✅ Bucket exists: ${bucketName}`);
 
@@ -139,9 +139,6 @@ async function initializeGarage(containerName = 'garage') {
     console.log(`✅ Key granted access to bucket ${bucketName}`);
 
     // Store credentials in environment for tests to use
-    process.env.GARAGE_ACCESS_KEY_ID = keyId;
-    process.env.GARAGE_SECRET_ACCESS_KEY = secretKey;
-    process.env.GARAGE_BUCKET = bucketName;
     process.env.BUCKET_ENV_GARAGE = `garage,${keyId},${secretKey},http://localhost:9000/test-bucket,garage`;
 
     return { keyId, secretKey, bucketName };
@@ -166,10 +163,6 @@ export default async () => {
       case 'minio':
         process.env.MINIO_ROOT_USER = cfg.accessKeyId;
         process.env.MINIO_ROOT_PASSWORD = cfg.secretAccessKey;
-        break;
-      case 'garage':
-        process.env.GARAGE_ENDPOINT = cfg.endpoint || 'http://localhost:9000/test-bucket';
-        process.env.GARAGE_REGION = cfg.region || 'garage';
         break;
       /* case 'ceph':
          process.env.CEPH_ACCESS_KEY = cfg.user;
