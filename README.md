@@ -1,4 +1,4 @@
-# s3mini | Tiny & fast S3 client built for the edge.
+# s3mini | Tiny & fast S3 client for node and edge platforms.
 
 `s3mini` is an ultra-lightweight Typescript client (~14 KB minified, ≈15 % more ops/s) for S3-compatible object storage. It runs on Node, Bun, Cloudflare Workers, and other edge platforms. It has been tested on Cloudflare R2, Backblaze B2, DigitalOcean Spaces, and MinIO. (No Browser support!)
 
@@ -12,7 +12,11 @@
 - 🔧 Zero dependencies; supports AWS SigV4 (no pre-signed requests).
 - 🟠 Works on Cloudflare Workers; ideal for edge computing, Node, and Bun (no browser support).
 - 🔑 Only the essential S3 APIs—improved list, put, get, delete, and a few more.
-- 📦 **BYOS3** — _Bring your own S3-compatible bucket_ (tested on Cloudflare R2, Backblaze B2, DigitalOcean Spaces, MinIO; Ceph and Garage are in the queue).
+- 📦 **BYOS3** — _Bring your own S3-compatible bucket_ (tested on Cloudflare R2, Backblaze B2, DigitalOcean Spaces, MinIO and Garage! Ceph and AWS are in the queue).
+
+#### Tested On
+
+![Tested On](testedon.png)
 
 Dev:
 
@@ -51,7 +55,7 @@ The library supports a subset of S3 operations, focusing on essential features, 
 #### Objects ops
 
 - ✅ ListObjectsV2 (listObjects)
-- ✅ GetObject (getObject, getObjectWithETag, getObjectRaw, getObjectArrayBuffer)
+- ✅ GetObject (getObject, getObjectResponse, getObjectWithETag, getObjectRaw, getObjectArrayBuffer, getObjectJSON)
 - ✅ PutObject (putObject)
 - ✅ DeleteObject (deleteObject)
 - ✅ HeadObject (objectExists, getEtag, getContentLength)
@@ -75,6 +79,12 @@ yarn add s3mini
 ```bash
 pnpm add s3mini
 ```
+
+> **⚠️ Environment Support Notice**
+>
+> This library is designed to run in environments like **Node.js**, **Bun**, and **Cloudflare Workers**. It does **not support browser environments** due to the use of Node.js APIs and polyfills.
+>
+> **Cloudflare Workers:** To enable built-in Node.js Crypto API, add the `nodejs_compat` compatibility flag to your Wrangler configuration file. This also enables `nodejs_compat_v2` as long as your compatibility date is `2024-09-23` or later. [Learn more about the Node.js compatibility flag and v2](https://developers.cloudflare.com/workers/configuration/compatibility-dates/#nodejs-compatibility-flag).
 
 ## Usage
 

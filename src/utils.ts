@@ -3,7 +3,8 @@
 import type { Crypto, XmlValue, XmlMap, ListBucketResponse, ErrorWithCode } from './types.js';
 declare const crypto: Crypto;
 
-// Initialize crypto functions
+// Initialize crypto functions - this is needed for environments where `crypto` is not available globally
+// e.g., in Cloudflare Workers or other non-Node.js environments with nodejs_flags enabled.
 const _createHmac: Crypto['createHmac'] = crypto.createHmac || (await import('node:crypto')).createHmac;
 const _createHash: Crypto['createHash'] = crypto.createHash || (await import('node:crypto')).createHash;
 
@@ -162,8 +163,8 @@ export class S3ServiceError extends S3Error {
  */
 export const runInBatches = async (
   tasks: Iterable<() => Promise<unknown>>,
-  batchSize = 30,
-  minIntervalMs = 0,
+  batchSize: number = 30,
+  minIntervalMs: number = 0,
 ): Promise<Array<PromiseSettledResult<unknown>>> => {
   const allResults: PromiseSettledResult<unknown>[] = [];
   let batch: Array<() => Promise<unknown>> = [];
