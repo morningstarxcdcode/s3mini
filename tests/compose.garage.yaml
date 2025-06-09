@@ -1,5 +1,6 @@
 services:
   garage:
+    container_name: garage
     image: docker.io/dxflrs/garage:v1.1.0
     volumes:
       # config
@@ -10,4 +11,10 @@ services:
     ports:
       - 9000:9000
       - 3903:3903
-    restart: unless-stopped
+    restart: always
+    healthcheck:
+      test: ['CMD', 'garage', 'status']
+      interval: 5s
+      timeout: 10s
+      retries: 5
+      start_period: 10s

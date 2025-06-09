@@ -8,6 +8,7 @@ import { composeDown } from './docker.js';
 
 const composeFiles = {
   minio: join(process.cwd(), 'tests', 'compose.minio.yaml'),
+  garage: join(process.cwd(), 'tests', 'compose.garage.yaml'),
   // ceph  : join(process.cwd(), 'tests', 'compose.ceph.yaml'),
 };
 
