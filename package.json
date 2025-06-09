@@ -1,7 +1,7 @@
 {
   "name": "s3mini",
-  "version": "0.1.0",
-  "description": "👶 Tiny & fast S3 client built for edge.",
+  "version": "0.1.1",
+  "description": "👶 Tiny & fast S3 client built for edges.",
   "homepage": "https://github.com/good-lly/s3mini",
   "bugs": {
     "url": "https://github.com/good-lly/s3mini/issues"

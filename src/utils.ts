@@ -13,7 +13,7 @@ const _createHash: Crypto['createHash'] = crypto.createHash || (await import('no
  * @returns {string} Hex encoded hash
  */
 export const hash = (content: string | Buffer): string => {
-  return _createHash('sha256').update(content).digest('hex');
+  return _createHash('sha256').update(content).digest('hex') as string;
 };
 
 /**

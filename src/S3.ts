@@ -535,12 +535,28 @@ class s3mini {
     return res.text();
   }
 
+  public async getObjectResponse(key: string, opts: Record<string, unknown> = {}): Promise<Response | null> {
+    const res = await this._signedRequest('GET', key, { query: opts, tolerated: [200, 404, 412, 304] });
+    if ([404, 412, 304].includes(res.status)) {
+      return null;
+    }
+    return res;
+  }
+
   public async getObjectArrayBuffer(key: string, opts: Record<string, unknown> = {}): Promise<ArrayBuffer | null> {
     const res = await this._signedRequest('GET', key, { query: opts, tolerated: [200, 404, 412, 304] });
     if ([404, 412, 304].includes(res.status)) {
       return null;
     }
     return res.arrayBuffer();
+  }
+
+  public async getObjectJSON<T = unknown>(key: string, opts: Record<string, unknown> = {}): Promise<T | null> {
+    const res = await this._signedRequest('GET', key, { query: opts, tolerated: [200, 404, 412, 304] });
+    if ([404, 412, 304].includes(res.status)) {
+      return null;
+    }
+    return res.json() as Promise<T>;
   }
 
   public async getObjectWithETag(
@@ -781,7 +797,6 @@ class s3mini {
       const res = await fetch(url, {
         method,
         headers,
-        keepalive: true,
         body: ['GET', 'HEAD'].includes(method) ? undefined : (body as string),
         signal: this.requestAbortTimeout !== undefined ? AbortSignal.timeout(this.requestAbortTimeout) : undefined,
       });

@@ -1,5 +1,3 @@
-import type { createHash as NodeCreateHash, createHmac as NodeCreateHmac } from 'node:crypto';
-
 export interface S3Config {
   accessKeyId: string;
   secretAccessKey: string;
@@ -11,8 +9,17 @@ export interface S3Config {
 }
 
 export interface Crypto {
-  createHmac: typeof NodeCreateHmac;
-  createHash: typeof NodeCreateHash;
+  createHmac: (
+    algorithm: string,
+    key: Buffer | string,
+  ) => {
+    update: (data: Buffer | string) => { digest: (encoding?: string) => string | Buffer };
+    digest: (encoding?: string) => string | Buffer;
+  };
+  createHash: (algorithm: string) => {
+    update: (data: Buffer | string) => { digest: (encoding?: string) => string | Buffer };
+    digest: (encoding?: string) => string | Buffer;
+  };
 }
 
 export interface Logger {
