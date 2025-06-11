@@ -31,6 +31,8 @@ Dev:
 ![npm package minimized gzipped size](https://img.shields.io/bundlejs/size/s3mini?color=green)
 ![GitHub License](https://img.shields.io/github/license/good-lly/s3mini)
 
+<a href="https://github.com/good-lly/s3mini/issues/"> <img src="https://img.shields.io/badge/contributions-welcome-brightgreen.svg" alt="Contributions welcome" /></a>
+
 Performance tests was done on local Minio instance. Your results may vary depending on environment and network conditions, so take it with a grain of salt.
 ![performance-image](https://raw.githubusercontent.com/good-lly/s3mini/dev/performance-screenshot.png)
 
