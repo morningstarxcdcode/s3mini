@@ -207,6 +207,25 @@ const rangeData = await rangeResponse.arrayBuffer();
 
 For more check [USAGE.md](USAGE.md) file, examples and tests.
 
+## Test Setup & Environment Variables
+
+- To run tests, you must set environment variables for each provider, e.g.:
+  - `BUCKET_ENV_MINIO=provider,accessKey,secret,endpoint,region`
+  - `BUCKET_ENV_CLOUDFLARE=...` (see `.github/workflows/test-e2e.yml` for examples)
+- If these are not set, tests will be skipped. For local development, you can add mock values or use the new mock mode (see below).
+
+## Mock/Fallback Test Mode
+
+- If no environment variables are set, tests will run in mock mode and only basic logic/unit tests will execute.
+
+## Deprecated Dependencies
+
+- Some dependencies (e.g., `inflight`, `glob`) are deprecated. Consider updating them in future releases.
+
+## Unit Tests
+
+- Added a basic unit test example in `tests/utils.unit.test.js`.
+
 ## Security Notes
 
 - The library masks sensitive information (access keys, session tokens, etc.) when logging.

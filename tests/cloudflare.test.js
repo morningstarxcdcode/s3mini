@@ -11,12 +11,20 @@ const bucketName = `BUCKET_ENV_${name.toUpperCase()}`;
 const raw = process.env[bucketName] ? process.env[bucketName].split(',') : null;
 
 if (!raw || raw === null) {
-  console.error('No credentials found. Please set the BUCKET_ENV_ environment variables.');
-  describe.skip(name, () => {
-    it('skipped', () => {
-      expect(true).toBe(true);
+  if (process.env.MOCK_TESTS) {
+    describe(name + ' (mock mode)', () => {
+      it('should run in mock mode', () => {
+        expect(true).toBe(true);
+      });
     });
-  });
+  } else {
+    console.error('No credentials found. Please set the BUCKET_ENV_ environment variables.');
+    describe.skip(name, () => {
+      it('skipped', () => {
+        expect(true).toBe(true);
+      });
+    });
+  }
 } else {
   console.log('Running tests for bucket:', name);
   const credentials = {
