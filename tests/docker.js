@@ -1,7 +1,7 @@
 'use strict';
 import { spawn, exec } from 'child_process';
 import { promisify } from 'util';
-import { resolve } from 'path';
+import { resolve } from 'node:path';
 
 const CWD = resolve('.');
 
@@ -23,10 +23,10 @@ export async function getContainerName(serviceName) {
   }
 }
 
-export async function execDockerCommand(containerName, command) {
+export async function execDockerCommand(containerName, command, timeoutMs = 10000) {
   // If it's a service name (like 'garage'), find the actual container name
   let actualContainerName = containerName;
-  if (containerName === 'garage' || containerName === 'minio') {
+  if (['garage', 'minio', 'ceph'].includes(containerName)) {
     try {
       actualContainerName = await getContainerName(containerName);
       console.log(`Found container: ${actualContainerName} for service: ${containerName}`);
@@ -38,20 +38,30 @@ export async function execDockerCommand(containerName, command) {
   const dockerCommand = `docker exec ${actualContainerName} ${command}`;
 
   try {
-    const { stdout, stderr } = await execAsync(dockerCommand);
+    // Add timeout to prevent hanging
+    const execPromise = execAsync(dockerCommand, { timeout: timeoutMs });
+    const { stdout, stderr } = await execPromise;
+
     if (stderr && !stderr.includes('WARNING')) {
       console.warn(`Warning from docker exec: ${stderr}`);
     }
     return stdout.trim();
   } catch (error) {
+    // Handle timeout specifically
+    if (error.killed && error.signal === 'SIGTERM') {
+      throw new Error(`Command timed out after ${timeoutMs}ms: ${dockerCommand}`);
+    }
+
     console.error(`Docker exec error details:`, {
       command: dockerCommand,
       message: error.message,
       stderr: error.stderr,
       stdout: error.stdout,
       code: error.code,
+      killed: error.killed,
+      signal: error.signal,
     });
-    throw new Error(`Docker exec failed: ${error.message}\nCommand: ${dockerCommand}`);
+    throw error;
   }
 }
 
@@ -62,5 +72,5 @@ function run(cmd, args) {
   });
 }
 
-export const composeUp = file => run('docker', ['compose', '-f', file, 'up', '-d']);
-export const composeDown = file => run('docker', ['compose', '-f', file, 'down']);
+export const composeUp = file => run('docker', ['compose', '-f', file, 'up', '-d', '--force-recreate']);
+export const composeDown = file => run('docker', ['compose', '-f', file, 'down', '--remove-orphans', '-v']);

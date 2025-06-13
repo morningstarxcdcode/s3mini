@@ -3,16 +3,74 @@ import { randomBytes } from 'node:crypto';
 import * as dotenv from 'dotenv';
 dotenv.config();
 
-import { join } from 'path';
+import { join } from 'node:path';
 import { composeUp, execDockerCommand } from './docker.js';
+
+import { promisify } from 'util';
+import { exec } from 'child_process';
+const execAsync = promisify(exec);
 
 const composeFiles = {
   minio: join(process.cwd(), 'tests', 'compose.minio.yaml'),
   garage: join(process.cwd(), 'tests', 'compose.garage.yaml'),
-  // ceph: join(process.cwd(), 'tests', 'compose.ceph.yaml'),
+  ceph: join(process.cwd(), 'tests', 'compose.ceph.yaml'),
 };
 
-async function initializeGarage(containerName = 'garage') {
+async function cephInit(containerName = 'ceph') {
+  console.log('🔧 Initializing Ceph demo container...');
+
+  // The demo container takes time to initialize all services
+  console.log('⏳ Waiting 20 seconds for initial startup...');
+  await new Promise(resolve => setTimeout(resolve, 20000));
+
+  // For the demo container, we just need to verify S3 is accessible
+  let retries = 20;
+  while (retries > 0) {
+    try {
+      // Check if the S3 port responds to HTTP requests
+      const response = await execAsync(
+        'curl -s -o /dev/null -w "%{http_code}" --max-time 5 http://localhost:7480/ || echo "000"',
+      );
+      const httpCode = response.stdout.trim();
+
+      console.log(`S3 endpoint returned HTTP ${httpCode}`);
+
+      // Any HTTP response (even 403/404) means the service is up
+      if ((httpCode !== '000000' && httpCode !== '') || httpCode !== '000') {
+        console.log('✅ Ceph S3 service is ready');
+
+        // Optional: Test with a basic S3 operation
+        try {
+          // This might fail with auth errors, but that's OK - it means S3 is working
+          const testCmd = `curl -s -X GET http://localhost:7480/ -H "Host: test-bucket.localhost"`;
+          await execAsync(testCmd);
+        } catch (e) {
+          // Expected to fail with auth error
+        }
+
+        return;
+      }
+    } catch (e) {
+      console.log('Check failed:', e.message);
+    }
+
+    retries--;
+    if (retries > 0) {
+      console.log(`⏳ Waiting for S3 endpoint... (${retries} retries left)`);
+      await new Promise(resolve => setTimeout(resolve, 3000));
+    }
+  }
+
+  // If we get here, something is wrong
+  try {
+    const logs = await execAsync(`docker logs ${containerName} --tail 100 2>&1`);
+    console.error('Container logs:', logs.stdout + logs.stderr);
+  } catch (e) {}
+
+  throw new Error('Ceph S3 service failed to become ready');
+}
+
+async function garageInit(containerName = 'garage') {
   console.log('🔧 Initializing Garage...');
 
   // The garage config is mounted at /etc/garage.toml in the container
@@ -164,15 +222,18 @@ export default async () => {
         process.env.MINIO_ROOT_USER = cfg.accessKeyId;
         process.env.MINIO_ROOT_PASSWORD = cfg.secretAccessKey;
         break;
-      /* case 'ceph':
-         process.env.CEPH_ACCESS_KEY = cfg.user;
-         process.env.CEPH_SECRET_KEY = cfg.password;
-         break; */
+      case 'ceph':
+        process.env.CEPH_ACCESS_KEY = cfg.accessKeyId;
+        process.env.CEPH_SECRET_KEY = cfg.secretAccessKey;
+        break;
     }
     console.log(`⏫  starting ${cfg.provider} image …`);
     await composeUp(composeFile);
     if (cfg.provider === 'garage') {
-      await initializeGarage();
+      await garageInit();
+    }
+    if (cfg.provider === 'ceph') {
+      await cephInit();
     }
   }
 };

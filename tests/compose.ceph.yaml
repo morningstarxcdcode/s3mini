@@ -1,0 +1,67 @@
+services:
+  ceph:
+    image: quay.io/ceph/demo:latest-quincy
+    container_name: ceph
+    ports:
+      - 7480:8080
+    restart: always
+    environment:
+      CEPH_DEMO_UID: test
+      CEPH_DEMO_ACCESS_KEY: ${CEPH_ACCESS_KEY}
+      CEPH_DEMO_SECRET_KEY: ${CEPH_SECRET_KEY}
+      CEPH_DEMO_BUCKET: test-bucket
+      MON_IP: 0.0.0.0
+      CEPH_PUBLIC_NETWORK: 0.0.0.0/0
+      NETWORK_AUTO_DETECT: 4
+      CEPH_DAEMON: demo
+      DEMO_DAEMONS: mon,mgr,osd,rgw
+      CEPH_DASHBOARD_ENABLED: 0
+      OSD_OBJECTSTORE: memstore
+      OSD_COUNT: 1
+      MON_CLOCK_DRIFT_ALLOWED: 1
+      RGW_CIVETWEB_PORT: 8080
+      CEPH_CONF_OVERRIDES: |
+        [global]
+        mon_health_preluminous_compat_warning = false
+        mon_warn_on_pool_no_redundancy = false
+        mon_warn_on_insecure_global_id_reclaim_allowed = false
+        mon_warn_on_pool_pg_num_not_power_of_two = false
+        mon_warn_on_crushmapless = false
+        osd_pool_default_size = 1
+        osd_pool_default_min_size = 1
+        osd_crush_chooseleaf_type = 0
+        osd_journal_size = 10
+        osd_objectstore_tracing = false
+        osd_function_tracing = false
+        osd_numa_auto_affinity = false
+        mon_compact_on_start = false
+        mon_compact_on_trim = false
+        mgr/dashboard/server_port = 8443
+        rgw_enable_usage_log = false
+        rgw_enable_ops_log = false
+        rgw_dynamic_resharding = false
+        debug_ms = 0/0
+        debug_osd = 0/0
+        debug_mon = 0/0
+        debug_mgr = 0/0
+        debug_rgw = 0/0
+        ms_tcp_nodelay = true
+        ms_tcp_rcvbuf = 0
+        [osd]
+        osd_max_scrubs = 1
+        osd_scrub_during_recovery = false
+        [mon]
+        mon_allow_pool_delete = true
+        mon_osd_down_out_interval = 30
+        [client.rgw]
+        rgw_cache_enabled = false
+    healthcheck:
+      test: ['CMD-SHELL', 'ceph health | grep -E "HEALTH_OK|HEALTH_WARN" || exit 1']
+      interval: 5s
+      timeout: 3s
+      retries: 24
+      start_period: 10s
+    cpus: '1.0'
+networks:
+  default:
+    driver: bridge
