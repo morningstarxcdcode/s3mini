@@ -136,11 +136,16 @@ class s3mini {
   }
 
   private _ensureValidUrl(raw: string): string {
-    // prepend https:// if user forgot a scheme
     const candidate = /^(https?:)?\/\//i.test(raw) ? raw : `https://${raw}`;
     try {
       new URL(candidate);
-      return candidate.replace(/\/+$/, ''); // strip trailing slash
+
+      // Find the last non-slash character
+      let endIndex = candidate.length;
+      while (endIndex > 0 && candidate[endIndex - 1] === '/') {
+        endIndex--;
+      }
+      return endIndex === candidate.length ? candidate : candidate.substring(0, endIndex);
     } catch {
       const msg = `${C.ERROR_ENDPOINT_FORMAT} But provided: "${raw}"`;
       this._log('error', msg);
