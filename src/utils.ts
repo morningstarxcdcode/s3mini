@@ -159,15 +159,15 @@ export class S3ServiceError extends S3Error {
  * @param {Iterable<() => Promise<unknonw>>} tasks       – functions returning Promises
  * @param {number} [batchSize=30]                    – max concurrent requests
  * @param {number} [minIntervalMs=0]                 – ≥0; 0 means “no pacing”
- * @returns {Promise<Array<PromiseSettledResult<unknonw>>>}
+ * @returns {Promise<Array<PromiseSettledResult<T>>>}
  */
-export const runInBatches = async (
-  tasks: Iterable<() => Promise<unknown>>,
+export const runInBatches = async <T = unknown>(
+  tasks: Iterable<() => Promise<T>>,
   batchSize: number = 30,
   minIntervalMs: number = 0,
-): Promise<Array<PromiseSettledResult<unknown>>> => {
-  const allResults: PromiseSettledResult<unknown>[] = [];
-  let batch: Array<() => Promise<unknown>> = [];
+): Promise<Array<PromiseSettledResult<T>>> => {
+  const allResults: PromiseSettledResult<T>[] = [];
+  let batch: Array<() => Promise<T>> = [];
 
   for (const task of tasks) {
     batch.push(task);
@@ -182,16 +182,18 @@ export const runInBatches = async (
   return allResults;
 
   // ───────── helpers ──────────
-  async function executeBatch(batchFns: Array<() => Promise<unknown>>): Promise<void> {
-    const start = Date.now();
+  async function executeBatch(batchFns: ReadonlyArray<() => Promise<T>>): Promise<void> {
+    const start: number = Date.now();
 
-    const settled = await Promise.allSettled(batchFns.map(fn => fn()));
+    const settled: Array<PromiseSettledResult<T>> = await Promise.allSettled(
+      batchFns.map((fn: () => Promise<T>) => fn()),
+    );
     allResults.push(...settled);
 
     if (minIntervalMs > 0) {
-      const wait = minIntervalMs - (Date.now() - start);
+      const wait: number = minIntervalMs - (Date.now() - start);
       if (wait > 0) {
-        await new Promise(r => setTimeout(r, wait));
+        await new Promise<void>((resolve: () => void) => setTimeout(resolve, wait));
       }
     }
   }
