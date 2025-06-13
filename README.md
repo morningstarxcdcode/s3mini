@@ -126,7 +126,10 @@ let etag: string | null = null;
 if (!objectExists) {
   // put/upload the object, content can be a string or Buffer
   // to add object into "folder", use "folder/filename.txt" as key
+  // Third argument is optional, it can be used to set content type ... default is 'application/octet-stream'
   const resp: Response = await s3client.putObject(smallObjectKey, smallObjectContent);
+  // example with content type:
+  // const resp: Response = await s3client.putObject(smallObjectKey, smallObjectContent, 'image/png');
   // you can also get etag via getEtag method
   // const etag: string = await s3client.getEtag(smallObjectKey);
   etag = sanitizeETag(resp.headers.get('etag'));

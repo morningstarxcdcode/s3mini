@@ -647,13 +647,20 @@ class s3mini {
     return U.sanitizeETag(etag);
   }
 
-  public async putObject(key: string, data: string | Buffer): Promise<Response> {
+  public async putObject(
+    key: string,
+    data: string | Buffer,
+    fileType: string = C.DEFAULT_STREAM_CONTENT_TYPE,
+  ): Promise<Response> {
     if (!(data instanceof Buffer || typeof data === 'string')) {
       throw new TypeError(C.ERROR_DATA_BUFFER_REQUIRED);
     }
     return this._signedRequest('PUT', key, {
       body: data,
-      headers: { [C.HEADER_CONTENT_LENGTH]: typeof data === 'string' ? Buffer.byteLength(data) : data.length },
+      headers: {
+        [C.HEADER_CONTENT_LENGTH]: typeof data === 'string' ? Buffer.byteLength(data) : data.length,
+        [C.HEADER_CONTENT_TYPE]: fileType,
+      },
       tolerated: [200],
     });
   }

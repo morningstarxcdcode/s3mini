@@ -154,6 +154,13 @@ export const testRunner = bucket => {
     const getObjectLength = await s3client.getContentLength(specialCharKey);
     expect(getObjectLength).toBe(specialCharContentBufferExtra.length);
 
+    // Put object image/png
+    await s3client.putObject(specialCharKey + '.png', specialCharContentBufferExtra, 'image/png');
+    // get object with image/png content type
+    const imageData = await s3client.getObjectResponse(specialCharKey + '.png');
+    expect(imageData).toBeDefined();
+    expect(imageData.headers.get('content-type')).toBe('image/png');
+
     // Clean up
     const delResp = await s3client.deleteObject(specialCharKey);
     expect(delResp).toBe(true);
