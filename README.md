@@ -82,6 +82,15 @@ yarn add s3mini
 pnpm add s3mini
 ```
 
+### Environment Variables
+
+To use `s3mini`, you need to set up your environment variables for provider credentials and S3 endpoint. Create a `.env` file in your project root directory. Checkout the [example.env](example.env) file for reference.
+
+```bash
+# On Windows, Mac, or Linux
+mv example.env .env
+```
+
 > **⚠️ Environment Support Notice**
 >
 > This library is designed to run in environments like **Node.js**, **Bun**, and **Cloudflare Workers**. It does **not support browser environments** due to the use of Node.js APIs and polyfills.
