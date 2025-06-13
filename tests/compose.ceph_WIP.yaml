@@ -2,6 +2,7 @@ services:
   ceph:
     image: quay.io/ceph/demo:latest-quincy
     container_name: ceph-test
+    network_mode: host
     volumes:
       - type: tmpfs
         target: /var/lib/ceph
@@ -20,6 +21,8 @@ services:
       CEPH_DEMO_ACCESS_KEY: testkey
       CEPH_DEMO_SECRET_KEY: testsecret
       CEPH_DEMO_BUCKET: testbucket
+      CEPH_PUBLIC_NETWORK: 172.16.0.0/12
+      MON_IP: 0.0.0.0
       NETWORK_AUTO_DETECT: 4
       CEPH_DAEMON: demo
       DEMO_DAEMONS: mon,mgr,osd,rgw
