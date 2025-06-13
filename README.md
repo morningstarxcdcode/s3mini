@@ -216,17 +216,17 @@ For more check [USAGE.md](USAGE.md) file, examples and tests.
 - Authors are not responsible for any data loss or security breaches resulting from improper usage of the library.
 - If you find a security vulnerability, please report it to us directly via email. For more details, please refer to the [SECURITY.md](SECURITY.md) file.
 
-## Contributions welcomed!
+## Contributions welcomed! (in specific order)
 
-Contributions are greatly appreciated! If you have an idea for a new feature or have found a bug, we encourage you to get involved:
+Contributions are greatly appreciated! If you have an idea for a new feature or have found a bug, we encourage you to get involved in this order:
 
-- _Report Issues_: If you encounter a problem or have a feature request, please open an issue on GitHub. Include as much detail as possible (environment, error messages, logs, steps to reproduce, etc.) so we can understand and address the issue.
+1. _Open/Report Issues or Ideas_: If you encounter a problem, have an idea or a feature request, please open an issue on GitHub (FIRST!) . Be concise but include as much detail as necessary (environment, error messages, logs, steps to reproduce, etc.) so we can understand and address the issue and have a dialog.
 
-- _Pull Requests_: We welcome PRs! If you want to implement a new feature or fix a bug, feel free to submit a pull request to the latest `dev branch`. For major changes, it's a good idea to discuss your plans in an issue first.
+2. _Create Pull Requests_: We welcome PRs! If you want to implement a new feature or fix a bug, feel free to submit a pull request to the latest `dev branch`. For major changes, it's a necessary to discuss your plans in an issue first!
 
-- _Lightweight Philosophy_: When contributing, keep in mind that s3mini aims to remain lightweight and dependency-free. Please avoid adding heavy dependencies. New features should provide significant value to justify any increase in size.
+3. _Lightweight Philosophy_: When contributing, keep in mind that s3mini aims to remain lightweight and dependency-free. Please avoid adding heavy dependencies. New features should provide significant value to justify any increase in size.
 
-- _Community Conduct_: Be respectful and constructive in communications. We want a welcoming environment for all contributors. For more details, please refer to our [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md). No one reads it, but it's there for a reason.
+4. _Community Conduct_: Be respectful and constructive in communications. We want a welcoming environment for all contributors. For more details, please refer to our [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md). No one reads it, but it's there for a reason.
 
 If you figure out a solution to your question or problem on your own, please consider posting the answer or closing the issue with an explanation. It could help the next person who runs into the same thing!
 
