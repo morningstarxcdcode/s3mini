@@ -219,6 +219,23 @@ const rangeData = await rangeResponse.arrayBuffer();
 
 For more check [USAGE.md](USAGE.md) file, examples and tests.
 
+## End-to-End (e2e) Testing
+
+To run the full e2e test suite locally:
+
+```bash
+npm install
+npm run build
+npm run test:e2e
+```
+
+- The e2e tests require real S3-compatible services (see `.env` and `example.env` for required credentials).
+- The tests are designed to run against actual storage backends (MinIO, Backblaze, Cloudflare R2, DigitalOcean Spaces, etc.).
+- Do **not** edit the test files, do **not** add unit tests, and do **not** add mock models. All tests must remain end-to-end and integration focused.
+- For CI, see `.github/workflows/test-e2e.yml` for the automated test process.
+
+For more details, see the `tests/` directory and the [USAGE.md](USAGE.md) file.
+
 ## Security Notes
 
 - The library masks sensitive information (access keys, session tokens, etc.) when logging.
