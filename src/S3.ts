@@ -45,12 +45,19 @@ class s3mini {
   private accessKeyId: string;
   private secretAccessKey: string;
   private endpoint: string;
+  private endpointUrl: URL; // Store the URL for later use
+  // private basePathname: string; // The pathname part of the endpoint URL
   private region: string;
   private requestSizeInBytes: number;
   private requestAbortTimeout?: number;
   private logger?: IT.Logger;
-  private signingKeyDate?: string;
+  private signingKeyDay: number; // to avoid re-signing every request
+  private fullDatetime: string; // YYYYMMDD'T'HHMMSS'Z'
+  private shortDatetime: string; // YYYYMMDD
+  private credentialScope: string; // YYYYMMDD/region/s3/aws4_request
   private signingKey?: Buffer;
+
+  private authorizationHeaderArray: string[];
 
   constructor({
     accessKeyId,
@@ -65,10 +72,22 @@ class s3mini {
     this.accessKeyId = accessKeyId;
     this.secretAccessKey = secretAccessKey;
     this.endpoint = this._ensureValidUrl(endpoint);
+    this.endpointUrl = new URL(this.endpoint); // Store the URL for later use
+    // this.basePathname = this.endpointUrl.pathname;
+
     this.region = region;
     this.requestSizeInBytes = requestSizeInBytes;
     this.requestAbortTimeout = requestAbortTimeout;
     this.logger = logger;
+
+    this.signingKeyDay = (Date.now() / C.DAY) | 0;
+    this.fullDatetime = new Date().toISOString().replace(/[:-]|\.\d{3}/g, '');
+    this.shortDatetime = this.fullDatetime.slice(0, 8);
+    this.credentialScope = [this.shortDatetime, this.region, C.S3_SERVICE, C.AWS_REQUEST_TYPE].join('/');
+    this.signingKey = this._getSignatureKey(this.shortDatetime);
+
+    this.authorizationHeaderArray = new Array<string>(3);
+    this.authorizationHeaderArray[0] = `${C.AWS_ALGORITHM} Credential=${this.accessKeyId}/${this.credentialScope}`;
   }
 
   private _sanitize(obj: unknown): unknown {
@@ -160,34 +179,6 @@ class s3mini {
     }
   }
 
-  private _checkKey(key: string): void {
-    if (typeof key !== 'string' || key.trim().length === 0) {
-      this._log('error', C.ERROR_KEY_REQUIRED);
-      throw new TypeError(C.ERROR_KEY_REQUIRED);
-    }
-  }
-
-  private _checkDelimiter(delimiter: string): void {
-    if (typeof delimiter !== 'string' || delimiter.trim().length === 0) {
-      this._log('error', C.ERROR_DELIMITER_REQUIRED);
-      throw new TypeError(C.ERROR_DELIMITER_REQUIRED);
-    }
-  }
-
-  private _checkPrefix(prefix: string): void {
-    if (typeof prefix !== 'string') {
-      this._log('error', C.ERROR_PREFIX_TYPE);
-      throw new TypeError(C.ERROR_PREFIX_TYPE);
-    }
-  }
-
-  // private _checkMaxKeys(maxKeys: number): void {
-  //   if (typeof maxKeys !== 'number' || maxKeys <= 0) {
-  //     this._log('error', C.ERROR_MAX_KEYS_TYPE);
-  //     throw new TypeError(C.ERROR_MAX_KEYS_TYPE);
-  //   }
-  // }
-
   private _checkOpts(opts: object): void {
     if (typeof opts !== 'object') {
       this._log('error', `${C.ERROR_PREFIX}opts must be an object`);
@@ -201,11 +192,10 @@ class s3mini {
   } {
     const filteredOpts: Record<string, string> = {};
     const conditionalHeaders: Record<string, unknown> = {};
-    const ifHeaders = ['if-match', 'if-none-match', 'if-modified-since', 'if-unmodified-since'];
 
     for (const [key, value] of Object.entries(opts)) {
-      if (ifHeaders.includes(key.toLowerCase())) {
-        // Convert to lowercase for consistency
+      // Use pre-computed Set instead of array.includes
+      if (C.IF_HEADERS_SET.has(key.toLowerCase())) {
         conditionalHeaders[key] = value;
       } else {
         filteredOpts[key] = value as string;
@@ -215,28 +205,28 @@ class s3mini {
     return { filteredOpts, conditionalHeaders };
   }
 
-  private _validateUploadPartParams(
-    key: string,
-    uploadId: string,
-    data: Buffer | string,
-    partNumber: number,
-    opts: object,
-  ): void {
-    this._checkKey(key);
-    if (!(data instanceof Buffer || typeof data === 'string')) {
-      this._log('error', C.ERROR_DATA_BUFFER_REQUIRED);
-      throw new TypeError(C.ERROR_DATA_BUFFER_REQUIRED);
-    }
-    if (typeof uploadId !== 'string' || uploadId.trim().length === 0) {
-      this._log('error', C.ERROR_UPLOAD_ID_REQUIRED);
-      throw new TypeError(C.ERROR_UPLOAD_ID_REQUIRED);
-    }
-    if (!Number.isInteger(partNumber) || partNumber <= 0) {
-      this._log('error', `${C.ERROR_PREFIX}partNumber must be a positive integer`);
-      throw new TypeError(`${C.ERROR_PREFIX}partNumber must be a positive integer`);
-    }
-    this._checkOpts(opts);
-  }
+  // private _validateUploadPartParams(
+  //   key: string,
+  //   uploadId: string,
+  //   data: Buffer | string,
+  //   partNumber: number,
+  //   opts: object,
+  // ): void {
+  //   // this._checkKey(key);
+  //   if (!(data instanceof Buffer || typeof data === 'string')) {
+  //     this._log('error', C.ERROR_DATA_BUFFER_REQUIRED);
+  //     throw new TypeError(C.ERROR_DATA_BUFFER_REQUIRED);
+  //   }
+  //   if (typeof uploadId !== 'string' || uploadId.trim().length === 0) {
+  //     this._log('error', C.ERROR_UPLOAD_ID_REQUIRED);
+  //     throw new TypeError(C.ERROR_UPLOAD_ID_REQUIRED);
+  //   }
+  //   if (!Number.isInteger(partNumber) || partNumber <= 0) {
+  //     this._log('error', `${C.ERROR_PREFIX}partNumber must be a positive integer`);
+  //     throw new TypeError(`${C.ERROR_PREFIX}partNumber must be a positive integer`);
+  //   }
+  //   this._checkOpts(opts);
+  // }
 
   private _sign(
     method: IT.HttpMethod,
@@ -244,8 +234,7 @@ class s3mini {
     query: Record<string, unknown> = {},
     headers: Record<string, string | number> = {},
   ): { url: string; headers: Record<string, string | number> } {
-    // Create URL without appending keyPath first
-    const url = new URL(this.endpoint);
+    const url = new URL(this.endpointUrl);
 
     // Properly format the pathname to avoid double slashes
     if (keyPath && keyPath.length > 0) {
@@ -253,24 +242,18 @@ class s3mini {
         url.pathname === '/' ? `/${keyPath.replace(/^\/+/, '')}` : `${url.pathname}/${keyPath.replace(/^\/+/, '')}`;
     }
 
-    const fullDatetime = new Date().toISOString().replace(/[:-]|\.\d{3}/g, '');
-    const shortDatetime = fullDatetime.slice(0, 8);
-    const credentialScope = this._buildCredentialScope(shortDatetime);
-
-    headers[C.HEADER_AMZ_CONTENT_SHA256] = C.UNSIGNED_PAYLOAD; // body ? U.hash(body) : C.UNSIGNED_PAYLOAD;
-    headers[C.HEADER_AMZ_DATE] = fullDatetime;
-    headers[C.HEADER_HOST] = url.host;
     const canonicalHeaders = this._buildCanonicalHeaders(headers);
     const signedHeaders = Object.keys(headers)
       .map(key => key.toLowerCase())
       .sort()
       .join(';');
-
+    this.authorizationHeaderArray[1] = `SignedHeaders=${signedHeaders}`;
     const canonicalRequest = this._buildCanonicalRequest(method, url, query, canonicalHeaders, signedHeaders);
-    const stringToSign = this._buildStringToSign(fullDatetime, credentialScope, canonicalRequest);
-    const signature = this._calculateSignature(shortDatetime, stringToSign);
-    const authorizationHeader = this._buildAuthorizationHeader(credentialScope, signedHeaders, signature);
-    headers[C.HEADER_AUTHORIZATION] = authorizationHeader;
+    const stringToSign = [C.AWS_ALGORITHM, this.fullDatetime, this.credentialScope, U.hash(canonicalRequest)].join(
+      '\n',
+    );
+    this.authorizationHeaderArray[2] = `Signature=${U.hmac(this.signingKey!, stringToSign, 'hex') as string}`;
+    headers[C.HEADER_AUTHORIZATION] = this.authorizationHeaderArray.join(', ');
     return { url: url.toString(), headers };
   }
 
@@ -298,30 +281,6 @@ class s3mini {
     ].join('\n');
   }
 
-  private _buildCredentialScope(shortDatetime: string): string {
-    return [shortDatetime, this.region, C.S3_SERVICE, C.AWS_REQUEST_TYPE].join('/');
-  }
-
-  private _buildStringToSign(fullDatetime: string, credentialScope: string, canonicalRequest: string): string {
-    return [C.AWS_ALGORITHM, fullDatetime, credentialScope, U.hash(canonicalRequest)].join('\n');
-  }
-
-  private _calculateSignature(shortDatetime: string, stringToSign: string): string {
-    if (shortDatetime !== this.signingKeyDate) {
-      this.signingKeyDate = shortDatetime;
-      this.signingKey = this._getSignatureKey(shortDatetime);
-    }
-    return U.hmac(this.signingKey!, stringToSign, 'hex') as string;
-  }
-
-  private _buildAuthorizationHeader(credentialScope: string, signedHeaders: string, signature: string): string {
-    return [
-      `${C.AWS_ALGORITHM} Credential=${this.accessKeyId}/${credentialScope}`,
-      `SignedHeaders=${signedHeaders}`,
-      `Signature=${signature}`,
-    ].join(', ');
-  }
-
   private async _signedRequest(
     method: IT.HttpMethod, // 'GET' | 'HEAD' | 'PUT' | 'POST' | 'DELETE'
     key: string, // ‘’ allowed for bucket‑level ops
@@ -339,21 +298,24 @@ class s3mini {
       withQuery?: boolean | undefined;
     } = {},
   ): Promise<Response> {
-    // Basic validation
-    if (!['GET', 'HEAD', 'PUT', 'POST', 'DELETE'].includes(method)) {
-      throw new Error(`${C.ERROR_PREFIX}Unsupported HTTP method ${method as string}`);
-    }
-    if (key) {
-      this._checkKey(key); // allow '' for bucket‑level
-    }
-
     const { filteredOpts, conditionalHeaders } = ['GET', 'HEAD'].includes(method)
       ? this._filterIfHeaders(query)
       : { filteredOpts: query, conditionalHeaders: {} };
 
+    const today = (Date.now() / C.DAY) | 0;
+    if (this.signingKeyDay !== today) {
+      this.signingKeyDay = today; // re-sign only once per day
+      this.fullDatetime = new Date().toISOString().replace(/[:-]|\.\d{3}/g, '');
+      this.shortDatetime = this.fullDatetime.slice(0, 8);
+      this.credentialScope = [this.shortDatetime, this.region, C.S3_SERVICE, C.AWS_REQUEST_TYPE].join('/');
+      this.signingKey = this._getSignatureKey(this.shortDatetime);
+      this.authorizationHeaderArray[0] = `${C.AWS_ALGORITHM} Credential=${this.accessKeyId}/${this.credentialScope}`;
+    }
+
     const baseHeaders: Record<string, string | number> = {
       [C.HEADER_AMZ_CONTENT_SHA256]: C.UNSIGNED_PAYLOAD,
-      // ...(['GET', 'HEAD'].includes(method) ? { [C.HEADER_CONTENT_TYPE]: C.JSON_CONTENT_TYPE } : {}),
+      [C.HEADER_AMZ_DATE]: this.fullDatetime,
+      [C.HEADER_HOST]: this.endpointUrl.host,
       ...headers,
       ...conditionalHeaders,
     };
@@ -372,28 +334,6 @@ class s3mini {
       Object.entries(signedHeaders).map(([k, v]) => [k, String(v)]),
     ) as Record<string, string>;
     return this._sendRequest(finalUrl, method, signedHeadersString, body, tolerated);
-  }
-
-  public getProps(): IT.S3Config {
-    return {
-      accessKeyId: this.accessKeyId,
-      secretAccessKey: this.secretAccessKey,
-      endpoint: this.endpoint,
-      region: this.region,
-      requestSizeInBytes: this.requestSizeInBytes,
-      requestAbortTimeout: this.requestAbortTimeout,
-      logger: this.logger,
-    };
-  }
-  public setProps(props: IT.S3Config): void {
-    this._validateConstructorParams(props.accessKeyId, props.secretAccessKey, props.endpoint);
-    this.accessKeyId = props.accessKeyId;
-    this.secretAccessKey = props.secretAccessKey;
-    this.region = props.region || 'auto';
-    this.endpoint = props.endpoint;
-    this.requestSizeInBytes = props.requestSizeInBytes || C.DEFAULT_REQUEST_SIZE_IN_BYTES;
-    this.requestAbortTimeout = props.requestAbortTimeout;
-    this.logger = props.logger;
   }
 
   public sanitizeETag(etag: string): string {
@@ -431,25 +371,25 @@ class s3mini {
     // method: IT.HttpMethod = 'GET', // 'GET' or 'HEAD'
     opts: Record<string, unknown> = {},
   ): Promise<object[] | null> {
-    this._checkDelimiter(delimiter);
-    this._checkPrefix(prefix);
     this._checkOpts(opts);
 
     const keyPath = delimiter === '/' ? delimiter : U.uriEscape(delimiter);
-
+    const baseQuery = {
+      'list-type': '2',
+      ...(prefix ? { prefix } : {}),
+      ...opts,
+    };
     const unlimited = !(maxKeys && maxKeys > 0);
     let remaining = unlimited ? Infinity : maxKeys;
     let token: string | undefined;
     const all: object[] = [];
 
     do {
-      const batchSize = Math.min(remaining, 1000); // S3 ceiling
       const query: Record<string, unknown> = {
-        'list-type': C.LIST_TYPE, // =2 for V2
-        'max-keys': String(batchSize),
+        ...baseQuery,
+        'max-keys': String(Math.min(remaining, 1000)),
         ...(prefix ? { prefix } : {}),
         ...(token ? { 'continuation-token': token } : {}),
-        ...opts,
       };
 
       const res = await this._signedRequest('GET', keyPath, {
@@ -503,12 +443,9 @@ class s3mini {
 
   public async listMultipartUploads(
     delimiter: string = '/',
-    prefix: string = '',
     method: IT.HttpMethod = 'GET',
     opts: Record<string, string | number | boolean | undefined> = {},
   ): Promise<IT.ListMultipartUploadSuccess | IT.MultipartUploadError> {
-    this._checkDelimiter(delimiter);
-    this._checkPrefix(prefix);
     this._validateMethodIsGetOrHead(method);
     this._checkOpts(opts);
 
@@ -519,14 +456,6 @@ class s3mini {
       query,
       withQuery: true,
     });
-    // doublecheck if this is needed
-    // if (method === 'HEAD') {
-    //   return {
-    //     size: +(res.headers.get(C.HEADER_CONTENT_LENGTH) ?? '0'),
-    //     mtime: res.headers.get(C.HEADER_LAST_MODIFIED) ? new Date(res.headers.get(C.HEADER_LAST_MODIFIED)!) : undefined,
-    //     etag: res.headers.get(C.HEADER_ETAG) ?? '',
-    //   };
-    // }
 
     const raw = U.parseXml(await res.text()) as unknown;
     if (typeof raw !== 'object' || raw === null) {
@@ -666,10 +595,10 @@ class s3mini {
   }
 
   public async getMultipartUploadId(key: string, fileType: string = C.DEFAULT_STREAM_CONTENT_TYPE): Promise<string> {
-    this._checkKey(key);
-    if (typeof fileType !== 'string') {
-      throw new TypeError(`${C.ERROR_PREFIX}fileType must be a string`);
-    }
+    // this._checkKey(key);
+    // if (typeof fileType !== 'string') {
+    //   throw new TypeError(`${C.ERROR_PREFIX}fileType must be a string`);
+    // }
     const query = { uploads: '' };
     const headers = { [C.HEADER_CONTENT_TYPE]: fileType };
 
@@ -701,8 +630,6 @@ class s3mini {
     partNumber: number,
     opts: Record<string, unknown> = {},
   ): Promise<IT.UploadPart> {
-    this._validateUploadPartParams(key, uploadId, data, partNumber, opts);
-
     const query = { uploadId, partNumber, ...opts };
     const res = await this._signedRequest('PUT', key, {
       query,
@@ -753,11 +680,6 @@ class s3mini {
   }
 
   public async abortMultipartUpload(key: string, uploadId: string): Promise<object> {
-    this._checkKey(key);
-    if (!uploadId) {
-      throw new TypeError(C.ERROR_UPLOAD_ID_REQUIRED);
-    }
-
     const query = { uploadId };
     const headers = { [C.HEADER_CONTENT_TYPE]: C.XML_CONTENT_TYPE };
 
@@ -782,20 +704,9 @@ class s3mini {
   }
 
   private _buildCompleteMultipartUploadXml(parts: Array<IT.UploadPart>): string {
-    return `
-      <CompleteMultipartUpload>
-        ${parts
-          .map(
-            part => `
-          <Part>
-            <PartNumber>${part.partNumber}</PartNumber>
-            <ETag>${part.etag}</ETag>
-          </Part>
-        `,
-          )
-          .join('')}
-      </CompleteMultipartUpload>
-    `;
+    return `<CompleteMultipartUpload>${parts
+      .map(p => `<Part><PartNumber>${p.partNumber}</PartNumber><ETag>${p.etag}</ETag></Part>`)
+      .join('')}</CompleteMultipartUpload>`;
   }
 
   public async deleteObject(key: string): Promise<boolean> {

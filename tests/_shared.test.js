@@ -339,6 +339,18 @@ export const testRunner = bucket => {
     const pageLarge = 900;
 
     // Bucket must start empty for this prefix
+    const initValue = await s3client.listObjects('/', prefix);
+    expect(initValue).toBeInstanceOf(Array);
+    if (initValue.length > 0) {
+      // If not empty, delete all objects with this prefix
+      const generator = function* (n) {
+        for (let i = 0; i < n; i++)
+          yield async () => {
+            await s3client.deleteObject(initValue[i].key);
+          };
+      };
+      await runInBatches(generator(initValue.length), OP_CAP, 1_000);
+    }
     expect(await s3client.listObjects('/', prefix)).toEqual([]);
     let counter = 0;
     // Upload 1 114 objects in parallel
