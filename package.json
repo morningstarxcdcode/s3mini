@@ -11,6 +11,9 @@
     "type": "git",
     "url": "git+https://github.com/good-lly/s3mini.git"
   },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/"
+  },
   "files": [
     "./dist/",
     "./src/",

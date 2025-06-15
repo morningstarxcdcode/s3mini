@@ -1,27 +1,35 @@
 'use strict';
-import { jest, it, expect } from '@jest/globals';
+import { jest, it, expect, describe } from '@jest/globals';
 import { s3mini, sanitizeETag, runInBatches } from '../dist/s3mini.js';
 import { randomBytes } from 'node:crypto';
 
-// import * as dotenv from 'dotenv';
-// dotenv.config();
-
-// const SECONDS = 1000;
-// jest.setTimeout(70 * SECONDS);
-
-// OLDER APPROACH
-// --- 1 ■ Build one static table with all credentials -----------------------
-// const buckets = Object.keys(process.env)
-//   .filter(k => k.startsWith('BUCKET_ENV_'))
-//   .map(k => {
-//     const [provider, accessKeyId, secretAccessKey, endpoint, region] = process.env[k].split(',');
-//     return { provider, accessKeyId, secretAccessKey, endpoint, region };
-//   });
-
-// console.log(
-//   'Configured providers:',
-//   buckets.map(b => b.provider),
-// );
+export const beforeRun = (raw, name) => {
+  if (!raw || raw === null) {
+    console.error('No credentials found. Please set the BUCKET_ENV_ environment variables.');
+    describe.skip(name, () => {
+      it('skipped', () => {
+        expect(true).toBe(true);
+      });
+    });
+  } else {
+    console.log('Running tests for bucket:', name);
+    const credentials = {
+      provider: raw[0],
+      accessKeyId: raw[1],
+      secretAccessKey: raw[2],
+      endpoint: raw[3],
+      region: raw[4],
+    };
+    describe(`:::: ${credentials.provider} ::::`, () => {
+      expect(credentials.provider).toBe(name);
+      expect(credentials.accessKeyId).toBeDefined();
+      expect(credentials.secretAccessKey).toBeDefined();
+      expect(credentials.endpoint).toBeDefined();
+      expect(credentials.region).toBeDefined();
+      testRunner(credentials);
+    });
+  }
+};
 
 const EIGHT_MB = 8 * 1024 * 1024;
 

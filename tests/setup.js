@@ -13,7 +13,7 @@ const execAsync = promisify(exec);
 const composeFiles = {
   minio: join(process.cwd(), 'tests', 'compose.minio.yaml'),
   garage: join(process.cwd(), 'tests', 'compose.garage.yaml'),
-  ceph: join(process.cwd(), 'tests', 'compose.ceph.yaml'),
+  // ceph: join(process.cwd(), 'tests', 'compose.ceph.yaml'),
 };
 
 async function cephInit(containerName = 'ceph') {
@@ -222,18 +222,18 @@ export default async () => {
         process.env.MINIO_ROOT_USER = cfg.accessKeyId;
         process.env.MINIO_ROOT_PASSWORD = cfg.secretAccessKey;
         break;
-      case 'ceph':
-        process.env.CEPH_ACCESS_KEY = cfg.accessKeyId;
-        process.env.CEPH_SECRET_KEY = cfg.secretAccessKey;
-        break;
+      // case 'ceph':
+      //   process.env.CEPH_ACCESS_KEY = cfg.accessKeyId;
+      //   process.env.CEPH_SECRET_KEY = cfg.secretAccessKey;
+      //   break;
     }
     console.log(`⏫  starting ${cfg.provider} image …`);
     await composeUp(composeFile);
     if (cfg.provider === 'garage') {
       await garageInit();
     }
-    if (cfg.provider === 'ceph') {
-      await cephInit();
-    }
+    // if (cfg.provider === 'ceph') {
+    //   await cephInit();
+    // }
   }
 };
